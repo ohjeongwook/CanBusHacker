@@ -10,6 +10,7 @@ import sys
 import time
 import random
 import sqlite3
+import pprint
 
 class CanLogReader(QThread):
 	canMessageSignal=Signal(list)
@@ -105,6 +106,7 @@ class PacketTable(QAbstractTableModel):
 		if cur_time-self.LastDataChangedEmitTime>0.1:
 			start_row=len(self.PacketList)
 			end_row=start_row+len(self.BufferedPacketList)-1
+			
 			self.beginInsertRows(QModelIndex(), start_row, end_row)
 			self.PacketList.extend(self.BufferedPacketList)
 			self.endInsertRows()
@@ -112,12 +114,26 @@ class PacketTable(QAbstractTableModel):
 			self.dataChanged.emit(start_row,end_row)
 			self.LastDataChangedEmitTime=cur_time
 			self.BufferedPacketList=[]
-		
+			
+	def addPackets(self,packets):
+		self.beginRemoveRows(QModelIndex(), 0, len(self.PacketList)-1)
+		self.PacketList=[]
+		self.endRemoveRows()
+	
+		start_row=0
+		end_row=start_row+len(packets)-1
+		self.beginInsertRows(QModelIndex(), start_row, end_row)
+		self.PacketList=packets
+		self.endInsertRows()
+	
+		self.dataChanged.emit(start_row,end_row)
+			
 class TreeItem(object):
-	def __init__(self,data,parent=None):
+	def __init__(self,data,parent=None,assoc_data=None):
 		self.parentItem=parent
 		self.itemData=data
 		self.childItems=[]
+		self.assocData=assoc_data
 		
 	def appendChild(self,item):
 		self.childItems.append(item)
@@ -149,6 +165,12 @@ class TreeItem(object):
 			return parentItem.childItems.index(self)
 			
 		return 0
+		
+	def setAssocData(self,data):
+		self.assocData=data
+		
+	def getAssocData(self):
+		return self.assocData
 		
 class TreeModel(QAbstractItemModel):
 	def __init__(self,root_item,parent=None):
@@ -240,7 +262,7 @@ class TreeModel(QAbstractItemModel):
 					tree_item.itemData[1]="%d" % count
 				else:
 					self.beginInsertRows(QModelIndex(), start_row, end_row)
-					tree_item=TreeItem([str(id),"%d" % count])
+					tree_item=TreeItem([str(id),"%d" % count],assoc_data=id)
 					self.ID2Item[id]=tree_item
 					self.rootItem.appendChild(tree_item)			
 					self.endInsertRows()
@@ -250,6 +272,12 @@ class TreeModel(QAbstractItemModel):
 			self.LastDataChangedEmitTime=cur_time
 			self.BufferedMap={}
 	
+	def getAssocData(self,index):
+		if not index.isValid():
+			return None
+		item=index.internalPointer()
+		return item.getAssocData()
+		
 class MainWindow(QMainWindow):
 	DebugPacketLoad=0
 	def __init__(self,com='',log_db=''):
@@ -262,6 +290,7 @@ class MainWindow(QMainWindow):
 		self.idTreeView=QTreeView()
 		self.idTreeModel=TreeModel(("ID","Count"))
 		self.idTreeView.setModel(self.idTreeModel)
+		self.idTreeView.connect(self.idTreeView.selectionModel(),SIGNAL("selectionChanged(QItemSelection, QItemSelection)"), self.idTreeSelected)
 		horizontal_splitter.addWidget(self.idTreeView)
 			
 		self.PacketTableView=QTableView()
@@ -273,8 +302,20 @@ class MainWindow(QMainWindow):
 		self.PacketTableView.setSelectionBehavior(QAbstractItemView.SelectRows)		
 		self.PacketTableModel=PacketTable(self)
 		self.PacketTableView.setModel(self.PacketTableModel)
+		
+		self.CurrentPacketTableView=QTableView()
+		vheader=QHeaderView(Qt.Orientation.Vertical)
+		self.CurrentPacketTableView.setVerticalHeader(vheader)
+		self.CurrentPacketTableView.horizontalHeader().setResizeMode(QHeaderView.Stretch)
+		self.CurrentPacketTableView.setSortingEnabled(True)
+		self.CurrentPacketTableView.setSelectionBehavior(QAbstractItemView.SelectRows)		
+		self.CurrentPacketTableModel=PacketTable(self)
+		self.CurrentPacketTableView.setModel(self.CurrentPacketTableModel)		
 
-		horizontal_splitter.addWidget(self.PacketTableView)		
+		self.rightTabWidget=QTabWidget()
+		self.rightTabWidget.addTab(self.PacketTableView,"All Packets")
+		self.rightTabWidget.addTab(self.CurrentPacketTableView,"Current Packets")
+		horizontal_splitter.addWidget(self.rightTabWidget)		
 		horizontal_splitter.setStretchFactor(0,0)
 		horizontal_splitter.setStretchFactor(1,1)
 
@@ -298,6 +339,10 @@ class MainWindow(QMainWindow):
 		main_widget.setLayout(vlayout)
 		self.setCentralWidget(main_widget)
 		self.show()
+		
+		self.IDCountMap={}
+		self.ID2Packets={}
+		self.TimeMap={}
 			
 		if com:
 			self.can_packet_reader=CanPacketReader(com,log_db)
@@ -307,11 +352,14 @@ class MainWindow(QMainWindow):
 			self.can_log_reader=CanLogReader(log_db)
 			self.can_log_reader.canMessageSignal.connect(self.getCanMessage)
 			self.can_log_reader.start()		
-		
-		self.IDCountMap={}
-		self.LastPayloadMap={}
-		self.TimeMap={}
 
+	def idTreeSelected(self,newSelection,oldSelection):
+		for index in newSelection.indexes():
+			id=self.idTreeModel.getAssocData(index)
+			#pprint.pprint(self.ID2Packets[id])
+			self.rightTabWidget.setCurrentIndex(1)
+			self.CurrentPacketTableModel.addPackets(self.ID2Packets[id])
+			
 	def getCanMessage(self,(current_time,id,bytes)):
 		self.PacketTableModel.addPacket((current_time,id,bytes))
 		self.PacketTableView.scrollToBottom()
@@ -321,7 +369,11 @@ class MainWindow(QMainWindow):
 		else:
 			self.IDCountMap[id]+=1
 
-		self.LastPayloadMap[id]=bytes
+		if not self.ID2Packets.has_key(id):
+			self.ID2Packets[id]=[]
+			
+		self.ID2Packets[id].append([current_time,id,bytes])
+		
 		if self.TimeMap.has_key(id):
 			elapsed_time=current_time - self.TimeMap[id]
 		else:
