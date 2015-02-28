@@ -13,6 +13,7 @@ import sqlite3
 
 class CanLogReader(QThread):
 	canMessageSignal=Signal(list)
+	EmulationMode=False
 	def __init__(self,log_db):
 		QThread.__init__(self)
 		
@@ -20,9 +21,15 @@ class CanLogReader(QThread):
 		Conn = sqlite3.connect(log_db)
 		Cursor = Conn.cursor()
 	
+		last_packet_time=0
 		for (packet_time,packet_id,payload) in Cursor.execute('SELECT Time,PacketID,Payload FROM Packets ORDER BY ID ASC'):
 			self.canMessageSignal.emit((packet_time,packet_id,payload))
-			time.sleep(0.1)
+			
+			if self.EmulationMode:
+				time_interval=packet_time-last_packet_time
+				if last_packet_time!=0:
+					time.sleep(time_interval)
+				last_packet_time=packet_time
 				
 class CanPacketReader(QThread):
 	canMessageSignal=Signal(list)
@@ -66,7 +73,9 @@ class PacketTable(QAbstractTableModel):
 	def __init__(self,parent, *args):
 		QAbstractTableModel.__init__(self,parent,*args)
 		self.PacketList=[]
+		self.BufferedPacketList=[]
 		self.LastIndex=None
+		self.LastDataChangedEmitTime=time.time()
 		
 	def rowCount(self,parent):
 		return len(self.PacketList)
@@ -89,12 +98,21 @@ class PacketTable(QAbstractTableModel):
 		return None	
 	
 	def addPacket(self,packet):
-		insert_row=len(self.PacketList)
-		self.beginInsertRows(QModelIndex(), insert_row, insert_row)
-		self.PacketList.append(packet)
-		self.endInsertRows()
-		self.dataChanged.emit(insert_row,insert_row)
-	
+		self.BufferedPacketList.append(packet)
+				
+		cur_time=time.time()
+		
+		if cur_time-self.LastDataChangedEmitTime>0.1:
+			start_row=len(self.PacketList)
+			end_row=start_row+len(self.BufferedPacketList)-1
+			self.beginInsertRows(QModelIndex(), start_row, end_row)
+			self.PacketList.extend(self.BufferedPacketList)
+			self.endInsertRows()
+		
+			self.dataChanged.emit(start_row,end_row)
+			self.LastDataChangedEmitTime=cur_time
+			self.BufferedPacketList=[]
+		
 class TreeItem(object):
 	def __init__(self,data,parent=None):
 		self.parentItem=parent
@@ -137,6 +155,8 @@ class TreeModel(QAbstractItemModel):
 		super(TreeModel,self).__init__(parent)
 		self.rootItem=TreeItem(root_item)
 		self.ID2Item={}
+		self.BufferedMap={}
+		self.LastDataChangedEmitTime=time.time()
 		
 	def columnCount(self,parent):
 		if parent.isValid():
@@ -207,19 +227,28 @@ class TreeModel(QAbstractItemModel):
 		return None
 		
 	def addIDData(self,id,count):
-		insert_row=0
-		self.beginInsertRows(QModelIndex(), insert_row, insert_row)
-		
-		if self.ID2Item.has_key(id):
-			tree_item=self.ID2Item[id]
-			tree_item.itemData[1]="%d" % count
-		else:
-			tree_item=TreeItem([str(id),"%d" % count])
-			self.ID2Item[id]=tree_item
-			self.rootItem.appendChild(tree_item)
+		self.BufferedMap[id]=count
 			
-		self.endInsertRows()
-		self.dataChanged.emit(insert_row,insert_row)
+		cur_time=time.time()
+		if cur_time-self.LastDataChangedEmitTime>0.1:
+			start_row=0
+			end_row=0
+			for (id,count) in self.BufferedMap.items():
+				insert_row=0
+				if self.ID2Item.has_key(id):
+					tree_item=self.ID2Item[id]
+					tree_item.itemData[1]="%d" % count
+				else:
+					self.beginInsertRows(QModelIndex(), start_row, end_row)
+					tree_item=TreeItem([str(id),"%d" % count])
+					self.ID2Item[id]=tree_item
+					self.rootItem.appendChild(tree_item)			
+					self.endInsertRows()
+					start_row=end_row
+					end_row+=1
+			self.dataChanged.emit(start_row,end_row)
+			self.LastDataChangedEmitTime=cur_time
+			self.BufferedMap={}
 	
 class MainWindow(QMainWindow):
 	DebugPacketLoad=0
