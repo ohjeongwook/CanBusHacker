@@ -8,4 +8,4 @@ This is a project to make a real time CAN packet monitoring system using Arduino
   We will add support for other products as we have access to them
 
 * OBD-II to DB9 Cable: something similar to this https://www.sparkfun.com/products/10087
-* USB to PC Cable to program and transfer serial to and from Arduino
+* USB to PC Cable to program and transfer serial data to and from Arduino
