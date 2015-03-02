@@ -15,8 +15,9 @@ import pprint
 class CanLogReader(QThread):
 	canMessageSignal=Signal(list)
 	EmulationMode=False
-	def __init__(self,log_db):
+	def __init__(self,log_db,emulation_mode=False):
 		QThread.__init__(self)
+		self.EmulationMode=emulation_mode
 		
 	def run(self):
 		Conn = sqlite3.connect(log_db)
@@ -280,7 +281,7 @@ class TreeModel(QAbstractItemModel):
 		
 class MainWindow(QMainWindow):
 	DebugPacketLoad=0
-	def __init__(self,com='',log_db=''):
+	def __init__(self,com='',log_db='',emulation_mode=False):
 		super(MainWindow,self).__init__()
 		self.setWindowTitle("CanBusHacker")
 		
@@ -349,7 +350,7 @@ class MainWindow(QMainWindow):
 			self.can_packet_reader.canMessageSignal.connect(self.getCanMessage)
 			self.can_packet_reader.start()
 		elif log_db:
-			self.can_log_reader=CanLogReader(log_db)
+			self.can_log_reader=CanLogReader(log_db,emulation_mode)
 			self.can_log_reader.canMessageSignal.connect(self.getCanMessage)
 			self.can_log_reader.start()		
 
@@ -387,8 +388,10 @@ if __name__=='__main__':
 	
 	com='' #TODO:
 	log_db=r'SampleLogs\log.db'
+	emulation_mode=True
+	
 	app=QApplication(sys.argv)
 	app.processEvents()
-	window=MainWindow(com,log_db)
+	window=MainWindow(com,log_db,emulation_mode)
 	window.show()
 	sys.exit(app.exec_())
