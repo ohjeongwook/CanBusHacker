@@ -21,12 +21,12 @@ This is a project to make a real time CAN packet monitoring system using Arduino
 * Download Arduino Library from CanBusShield's vendor site.
  * For example, for JayConSystems product, I could download it from http://www.jayconsystems.com/fileuploader/download/download/?d=0&file=custom%2Fupload%2FFile-1363136372.zip. But, you need to modify the code to gather raw packets. 
  * The "CANBridge\Arduino Library" folder contains the library for JayCon product. It has some modifications in the code to support raw level packet collection. 
- * If you want to support your board, you should go through similar code change. To get some idea how you modify your library code, please look at this change: https://github.com/ohjeongwook/CanBusHacker/commit/36e3019e95acba9e92f10366f415be9ebad8a710
+ * If you want to support your board, you should go through similar code change. To get some idea how you modify your library code, please look at these changes: https://github.com/ohjeongwook/CanBusHacker/commit/36e3019e95acba9e92f10366f415be9ebad8a710
 * Next, import the library using the method described here: http://arduino.cc/en/guide/libraries
 * Open CanBridge.ino file, compile and upload to your device
 
 ###CanBusHacker.py
-This program is for Windows that communicates with Arduino board through serial port. 
+This program is for Windows that communicates with Arduino board through serial port. Probably you can use this code on Linux or OSX with minor changes.
 * Install dependencies and run CanBusHacker.py.
 * Now connect you Arduino device to your laptop.
 * Connect your OBD-II cable to your car
