@@ -2,8 +2,6 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtSql import *
 import time
-import serial
-import time
 import os
 import re
 import sys
@@ -11,6 +9,12 @@ import time
 import random
 import sqlite3
 import pprint
+
+import serial
+if os.name == 'nt': #sys.platform == 'win32':
+	from serial.tools.list_ports_windows import *
+elif os.name == 'posix':
+	from serial.tools.list_ports_posix import *	
 
 class CanLogReader(QThread):
 	canMessageSignal=Signal(list)
@@ -35,25 +39,28 @@ class CanLogReader(QThread):
 				
 class CanPacketReader(QThread):
 	canMessageSignal=Signal(list)
-	def __init__(self,com,log_db='CANPackets.db'):
+	def __init__(self,com,log_db=''):
 		QThread.__init__(self)
+		self.COM=com
+		self.LogDB=log_db
 		
 	def run(self):
 		try:
-			Serial=serial.Serial(r'\\.\\'+com, baudrate=9600)
+			Serial=serial.Serial(self.COM, baudrate=9600)
 		except:
 			import traceback
 			traceback.print_exc()
 			Serial=None			
 
-		if Serial is not None:
-			Conn = sqlite3.connect(log_db)
-			Cursor = Conn.cursor()
-			
-			try:
-				Cursor.execute('''CREATE TABLE Packets(ID INTEGER PRIMARY KEY, Time DATETIME, PacketID INTEGER, Payload VARCHAR(15))''')
-			except:
-				pass
+		if self.LogDB:
+			if Serial is not None:
+				Conn = sqlite3.connect(self.LogDB)
+				Cursor = Conn.cursor()
+				
+				try:
+					Cursor.execute('''CREATE TABLE Packets(ID INTEGER PRIMARY KEY, Time DATETIME, PacketID INTEGER, Payload VARCHAR(15))''')
+				except:
+					pass
 			
 		CANMessagePattern=re.compile('CAN Message: \[(.*)\] ([^ ]+) ([^\r\n]+)')	
 		while Serial is not None:
@@ -66,9 +73,10 @@ class CanPacketReader(QThread):
 				length=int(m.group(2))
 				bytes=m.group(3)[0:length*3]
 
-				Cursor.execute('''INSERT INTO Packets(Time, PacketID, Payload) VALUES(?,?,?)''', (current_time, id, bytes))
-				Conn.commit()
-				
+				if self.LogDB:
+					Cursor.execute('''INSERT INTO Packets(Time, PacketID, Payload) VALUES(?,?,?)''', (current_time, id, bytes))
+					Conn.commit()
+					
 				self.canMessageSignal.emit((current_time,id,bytes))
 	
 class PacketTable(QAbstractTableModel):
@@ -279,11 +287,64 @@ class TreeModel(QAbstractItemModel):
 		item=index.internalPointer()
 		return item.getAssocData()
 		
+class StartCaptureDlg(QDialog):
+	def __init__(self,parent=None,default_log_db=''):
+		super(StartCaptureDlg,self).__init__(parent)
+		self.setWindowTitle("Start Capture")
+
+		self.Index2Port={}
+		self.comboBox=QComboBox(self)
+		i=0
+		for port, desc, hwid in comports():
+			name= '%s - %s' % (port,desc)
+			self.comboBox.addItem(name)
+			if os.name == 'nt':
+				self.Index2Port[i]='\\\\.\\'+port
+			else:
+				self.Index2Port[i]=port
+			i+=1
+
+		log_db_button=QPushButton('Output Log:',self)
+		log_db_button.clicked.connect(self.askLogDB)		
+		self.log_db_line=QLineEdit("")
+		self.log_db_line.setAlignment(Qt.AlignLeft)
+		self.log_db_line.setMinimumWidth(250)
+		self.log_db_line.setText(default_log_db)
+		
+		buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+		buttonBox.accepted.connect(self.accept)
+		buttonBox.rejected.connect(self.reject)
+		
+		main_layout=QGridLayout()
+		main_layout.addWidget(self.comboBox,0,0,1,2)
+		main_layout.addWidget(log_db_button,1,0)
+		main_layout.addWidget(self.log_db_line,1,1)		
+		main_layout.addWidget(buttonBox,2,0,1,2,Qt.AlignCenter)
+
+		self.setLayout(main_layout)
+		
+	def askLogDB(self):
+		log_db=QFileDialog.getSaveFileName(self,'Save File',
+												"",
+												'DB (*.db *.*)')[0]	
+		self.log_db_line.setText(log_db)
+												
+	def getLogDB(self):
+		return self.log_db_line.text()
+		
+	def getCOMPort(self):
+		return self.Index2Port[self.comboBox.currentIndex()]
+		
+		
 class MainWindow(QMainWindow):
 	DebugPacketLoad=0
 	def __init__(self,com='',log_db='',emulation_mode=False):
 		super(MainWindow,self).__init__()
 		self.setWindowTitle("CanBusHacker")
+		
+		self.COM=com
+		self.LogDB=log_db
+		self.EmulationMode=emulation_mode
 		
 		vertical_splitter=QSplitter()
 		vertical_splitter.setOrientation(Qt.Vertical)
@@ -339,21 +400,55 @@ class MainWindow(QMainWindow):
 		vlayout.addWidget(vertical_splitter)
 		main_widget.setLayout(vlayout)
 		self.setCentralWidget(main_widget)
+		
+		self.createMenus()
+		
 		self.show()
 		
 		self.IDCountMap={}
 		self.ID2Packets={}
 		self.TimeMap={}
-			
-		if com:
-			self.can_packet_reader=CanPacketReader(com,log_db)
-			self.can_packet_reader.canMessageSignal.connect(self.getCanMessage)
-			self.can_packet_reader.start()
-		elif log_db:
-			self.can_log_reader=CanLogReader(log_db,emulation_mode)
-			self.can_log_reader.canMessageSignal.connect(self.getCanMessage)
-			self.can_log_reader.start()		
 
+	def openLog(self):
+		self.LogDB=QFileDialog.getOpenFileName(self,
+												"Open Log DB",
+												"",
+												"DB Files (*.db)|All Files (*.*)")[0]
+		if self.LogDB:
+			self.can_log_reader=CanLogReader(self.LogDB,self.EmulationMode)
+			self.can_log_reader.canMessageSignal.connect(self.getCanMessage)
+			self.can_log_reader.start()
+			
+	def startCapture(self):
+		start_capture_dlg=StartCaptureDlg(default_log_db="log.db")
+		if start_capture_dlg.exec_():
+			self.COM=start_capture_dlg.getCOMPort()
+			log_db=start_capture_dlg.getLogDB()
+			if self.COM:
+				self.can_packet_reader=CanPacketReader(self.COM,log_db)
+				self.can_packet_reader.canMessageSignal.connect(self.getCanMessage)
+				self.can_packet_reader.start()
+		
+	def stopCapture(self):
+		pass
+		
+	def createMenus(self):
+		self.fileMenu=self.menuBar().addMenu("&File")
+		self.openAct=QAction("&Open Log...",
+									self,
+									triggered=self.openLog)
+		self.fileMenu.addAction(self.openAct)
+
+		self.arduinoMenu=self.menuBar().addMenu("&Arduino")
+		self.startCaptureAct=QAction("&Start Capture",
+									self,
+									triggered=self.startCapture)
+		self.arduinoMenu.addAction(self.startCaptureAct)		
+		self.stopCaptureAct=QAction("&Start Capture",
+									self,
+									triggered=self.stopCapture)
+		self.arduinoMenu.addAction(self.stopCaptureAct)			
+		
 	def idTreeSelected(self,newSelection,oldSelection):
 		for index in newSelection.indexes():
 			id=self.idTreeModel.getAssocData(index)
@@ -388,7 +483,7 @@ if __name__=='__main__':
 	
 	com='' #TODO:
 	log_db=r'SampleLogs\log.db'
-	emulation_mode=True
+	emulation_mode=False
 	
 	app=QApplication(sys.argv)
 	app.processEvents()
