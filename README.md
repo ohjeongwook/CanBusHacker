@@ -24,4 +24,7 @@ This is a project to make a real time CAN packet monitoring system using Arduino
 * Open CanBridge.ino file, compile and upload to your device
 
 ###CanBusHacker.py
-This program is for Windows program that communicates with Arduino board through serial port. Install dependencies and run CanBusHacker.py. Select Arduino -> Start Capture menu. You need to select serial port that is connected to your Aruino and need to specify output database file. The database file format is SQLite and you can open it up later using File -> Open Log menu.
+This program is for Windows program that communicates with Arduino board through serial port. 
+* Install dependencies and run CanBusHacker.py. 
+* Select Arduino -> Start Capture menu. You need to select serial port that is connected to your Aruino and need to specify output database file. 
+* The database file format is SQLite and you can open it up later using File -> Open Log menu.
