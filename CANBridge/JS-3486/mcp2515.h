@@ -49,6 +49,7 @@ typedef struct
 		uint8_t length : 4;
 	} header;
 	uint8_t data[8];
+	uint8_t raw_data[13];
 } tCAN;
 
 // ----------------------------------------------------------------------------

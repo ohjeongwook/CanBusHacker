@@ -7,6 +7,8 @@
 #ifndef canbus__h
 #define canbus__h
 
+#include <inttypes.h>
+
 #define CANSPEED_125 	7		// CAN speed at 125 kbps
 #define CANSPEED_250  	3		// CAN speed at 250 kbps
 #define CANSPEED_500	1		// CAN speed at 500 kbps
@@ -30,6 +32,7 @@ class CanbusClass
     char init(unsigned char);
 	char message_tx(unsigned int ID, unsigned char *buffer);
 	unsigned int message_rx(unsigned char *buffer);
+	bool raw_message_rx(uint16_t &id, int8_t &rtr, uint8_t &length, unsigned char *raw_buffer, unsigned char *buffer);
 	char ecu_req(unsigned char pid,  char *buffer);
 private:
 	

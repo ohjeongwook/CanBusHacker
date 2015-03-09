@@ -31,6 +31,7 @@ CanbusClass::CanbusClass() {
 
  
 }
+
 unsigned int CanbusClass::message_rx(unsigned char *buffer) {
 		tCAN message;
 	
@@ -55,6 +56,44 @@ unsigned int CanbusClass::message_rx(unsigned char *buffer) {
 			}
 		}
 		return 0;
+}
+
+bool CanbusClass::raw_message_rx(uint16_t &id, int8_t &rtr, uint8_t &length, unsigned char *raw_buffer, unsigned char *buffer) {
+	tCAN message;
+
+	if (mcp2515_check_message()) {
+		// Read the message from the buffer the MCP2515
+		if (mcp2515_get_message(&message)) {
+			id = message.id;
+			rtr = message.header.rtr;
+			length = message.header.length;
+
+			buffer[0] = message.data[0];
+			buffer[1] = message.data[1];
+			buffer[2] = message.data[2];
+			buffer[3] = message.data[3];
+			buffer[4] = message.data[4];
+			buffer[5] = message.data[5];
+			buffer[6] = message.data[6];
+			buffer[7] = message.data[7];
+
+			raw_buffer[0] = message.raw_data[0];
+			raw_buffer[1] = message.raw_data[1];
+			raw_buffer[2] = message.raw_data[2];
+			raw_buffer[3] = message.raw_data[3];
+			raw_buffer[4] = message.raw_data[4];
+			raw_buffer[5] = message.raw_data[5];
+			raw_buffer[6] = message.raw_data[6];
+			raw_buffer[7] = message.raw_data[7];
+			raw_buffer[8] = message.raw_data[8];
+			raw_buffer[9] = message.raw_data[9];
+			raw_buffer[10] = message.raw_data[10];
+			raw_buffer[11] = message.raw_data[11];
+			raw_buffer[12] = message.raw_data[12];
+			return true;																									
+		}
+	}
+	return false;
 }
 
 char CanbusClass::message_tx(unsigned int ID, unsigned char *buffer) {

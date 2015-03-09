@@ -240,14 +240,17 @@ uint8_t mcp2515_get_message(tCAN *message)
 	spi_putc(addr);
 	
 	// read id
-	message->id  = (uint16_t) spi_putc(0xff) << 3;
-	message->id |=            spi_putc(0xff) >> 5;
-	
-	spi_putc(0xff);
-	spi_putc(0xff);
+	message->raw_data[0] = spi_putc(0xff);
+	message->raw_data[1] = spi_putc(0xff);
+	message->raw_data[2] = spi_putc(0xff);
+	message->raw_data[3] = spi_putc(0xff);
+	message->raw_data[4] = spi_putc(0xff);
+
+	message->id = (uint16_t)message->raw_data[0] << 3;
+	message->id |= message->raw_data[1] >> 5;
 	
 	// read DLC
-	uint8_t length = spi_putc(0xff) & 0x0f;
+	uint8_t length = message->raw_data[4] & 0x0f;
 	
 	message->header.length = length;
 	message->header.rtr = (bit_is_set(status, 3)) ? 1 : 0;
@@ -255,6 +258,7 @@ uint8_t mcp2515_get_message(tCAN *message)
 	// read data
 	for (t=0;t<length;t++) {
 		message->data[t] = spi_putc(0xff);
+		message->raw_data[t + 5] = message->data[t];
 	}
 	SET(MCP2515_CS);
 	
@@ -268,7 +272,6 @@ uint8_t mcp2515_get_message(tCAN *message)
 	
 	return (status & 0x07) + 1;
 }
-
 // ----------------------------------------------------------------------------
 uint8_t mcp2515_send_message(tCAN *message)
 {
