@@ -5,8 +5,7 @@ This is a project to make a real time CAN packet monitoring system using Arduino
 ### Hardware
 * Arduino UNO
 * CAN BUS Shield: Currently this project supports Can Bus Shield v1.1 product (http://www.jayconsystems.com/can-bus-shield.html). You can also purchase this from eBay.
-  
-  We will add support for other products as we have access to them
+ * Probably other product will work without modification or minor tweak. We will add support for other products as we have access to them
 
 * OBD-II to DB9 Cable: something similar to this https://www.sparkfun.com/products/10087
 * USB to PC Cable to program and transfer serial data to and from Arduino
@@ -20,9 +19,9 @@ This is a project to make a real time CAN packet monitoring system using Arduino
 ###Arudino Programming
 * First assemble your Arduino and CanBusShield, refer to your CanBusShield's manufacturer's manual for more details.
 * Download Arduino Library from CanBusShield's vendor site.
-* For example, for JayConSystems product, I could download it from http://www.jayconsystems.com/fileuploader/download/download/?d=0&file=custom%2Fupload%2FFile-1363136372.zip. But, you need to modify the code to gather raw packets. 
-* The "CANBridge\Arduino Library" folder contains the library for JayCon product. It has some modifications in the code to support raw level packet collection. 
-* If you want to support your board, you should go through similar code change. To get some idea how you modify your library code, please look at this change: https://github.com/ohjeongwook/CanBusHacker/commit/36e3019e95acba9e92f10366f415be9ebad8a710
+ * For example, for JayConSystems product, I could download it from http://www.jayconsystems.com/fileuploader/download/download/?d=0&file=custom%2Fupload%2FFile-1363136372.zip. But, you need to modify the code to gather raw packets. 
+ * The "CANBridge\Arduino Library" folder contains the library for JayCon product. It has some modifications in the code to support raw level packet collection. 
+ * If you want to support your board, you should go through similar code change. To get some idea how you modify your library code, please look at this change: https://github.com/ohjeongwook/CanBusHacker/commit/36e3019e95acba9e92f10366f415be9ebad8a710
 * Next, import the library using the method described here: http://arduino.cc/en/guide/libraries
 * Open CanBridge.ino file, compile and upload to your device
 
