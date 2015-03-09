@@ -5,7 +5,7 @@ This is a project to make a real time CAN packet monitoring system using Arduino
 ### Hardware
 * Arduino UNO
 * CAN BUS Shield: Currently this project supports Can Bus Shield v1.1 product (http://www.jayconsystems.com/can-bus-shield.html). You can also purchase this from eBay.
- * Probably other product will work without modification or minor tweak. We will add support for other products as we have access to them
+ * Probably other products will work without modification or minor tweak. We will add support for other products as we have access to them
 
 * OBD-II to DB9 Cable: something similar to this https://www.sparkfun.com/products/10087
 * USB to PC Cable to program and transfer serial data to and from Arduino
