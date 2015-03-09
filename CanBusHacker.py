@@ -46,7 +46,7 @@ class CanPacketReader(QThread):
 		
 	def run(self):
 		try:
-			Serial=serial.Serial(self.COM, baudrate=9600)
+			Serial=serial.Serial(self.COM, baudrate=115200)
 		except:
 			import traceback
 			traceback.print_exc()
