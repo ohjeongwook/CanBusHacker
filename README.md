@@ -27,6 +27,9 @@ This is a project to make a real time CAN packet monitoring system using Arduino
 
 ###CanBusHacker.py
 This program is for Windows program that communicates with Arduino board through serial port. 
-* Install dependencies and run CanBusHacker.py. 
+* Install dependencies and run CanBusHacker.py.
+* Now connect you Arduino device to your laptop.
+* Connect your OBD-II cable to your car
 * Select Arduino -> Start Capture menu. You need to select serial port that is connected to your Aruino and need to specify output database file. 
+ * If you didn't start your engine, now is a good time to start it, you will see various packets coming up
 * The database file format is SQLite and you can open it up later using File -> Open Log menu.
