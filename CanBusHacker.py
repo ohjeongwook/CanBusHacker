@@ -100,7 +100,11 @@ class PacketTable(QAbstractTableModel):
 			return None
 
 		self.LastIndex=index
-		return str(self.PacketList[index.row()][index.column()])
+		
+		if index.column()==0:
+			return time.ctime(self.PacketList[index.row()][index.column()])
+		else:
+			return str(self.PacketList[index.row()][index.column()])
 
 	def headerData(self,col,orientation,role):
 		if orientation==Qt.Horizontal and role==Qt.DisplayRole:
