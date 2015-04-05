@@ -39,6 +39,7 @@ class CanLogReader(QThread):
 				
 class CanPacketReader(QThread):
 	canMessageSignal=Signal(list)
+	Debug=1
 	def __init__(self,com,log_db=''):
 		QThread.__init__(self)
 		self.COM=com
@@ -62,23 +63,48 @@ class CanPacketReader(QThread):
 				except:
 					pass
 			
+		if self.Debug>0:
+			fd=None
+			try:
+				fd=open("raw_packets.log","wb")
+			except:
+				import traceback
+				traceback.print_exc()
+
 		CANMessagePattern=re.compile('CAN Message: \[(.*)\] ([^ ]+) ([^\r\n]+)')	
 		while Serial is not None:
 			message=Serial.readline()
+			
+			if self.Debug>0:
+				if fd is not None:
+					try:
+						fd.write(messsage)
+					except:
+						pass
+
 			m=CANMessagePattern.match(message)
 			if m!=None:
 				current_time=time.time()
 
-				id=m.group(1)
-				length=int(m.group(2))
-				bytes=m.group(3)[0:length*3]
+				try:
+					id=m.group(1)
+					length=int(m.group(2))
+					bytes=m.group(3)[0:length*3]
 
-				if self.LogDB:
-					Cursor.execute('''INSERT INTO Packets(Time, PacketID, Payload) VALUES(?,?,?)''', (current_time, id, bytes))
-					Conn.commit()
-					
-				self.canMessageSignal.emit((current_time,id,bytes))
+					if self.LogDB:
+						Cursor.execute('''INSERT INTO Packets(Time, PacketID, Payload) VALUES(?,?,?)''', (current_time, id, bytes))
+						Conn.commit()
+						
+					self.canMessageSignal.emit((current_time,id,bytes))
 	
+				except:
+					import traceback
+					if self.Debug>0:
+						if fd is not None:					
+							fd.write("Exception:" + traceback.format_exc())
+					else:
+						traceback.print_exc()
+					
 class PacketTable(QAbstractTableModel):
 	def __init__(self,parent, *args):
 		QAbstractTableModel.__init__(self,parent,*args)
