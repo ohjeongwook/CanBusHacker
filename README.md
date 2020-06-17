@@ -16,7 +16,8 @@ This is a project to make a real time CAN packet monitoring system using Arduino
 * PySerial: https://pypi.python.org/pypi/pyserial (pip install pyserial)
 
 ## How to Install
-###Arudino Programming
+
+### Arudino Programming
 * First assemble your Arduino and CanBusShield, refer to your CanBusShield's manufacturer's manual for more details.
 * Download Arduino Library from CanBusShield's vendor site.
  * For example, for the JayCon product, I could download it from http://www.jayconsystems.com/fileuploader/download/download/?d=0&file=custom%2Fupload%2FFile-1363136372.zip. But, you need to modify the code to gather raw packets. 
@@ -25,7 +26,7 @@ This is a project to make a real time CAN packet monitoring system using Arduino
 * Next, import the library using the method described here: http://arduino.cc/en/guide/libraries
 * Open CanBridge.ino file, compile and upload to your device
 
-###CanBusHacker.py
+### CanBusHacker.py
 This program is for Windows that communicates with Arduino board through serial port. Probably you can use this code on Linux or OSX with minor changes.
 * Install dependencies and run CanBusHacker.py.
 * Now connect your Arduino device to your laptop.
